@@ -66,3 +66,6 @@ desktop.ini
 *.tmp
 tmp/
 temp/
+
+# Local AI assistant context
+CLAUDE.md

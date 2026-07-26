@@ -114,7 +114,7 @@ const elements = {
 // Speech Recognition Setup
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 let recognition = null;
-let speechSynthesis = window.speechSynthesis;
+let synth = window.speechSynthesis;
 let availableVoices = [];
 
 // Audio Context for Voice Visualization
@@ -604,12 +604,12 @@ async function startRecording() {
 // Voice Loading
 function loadAvailableVoices() {
   const updateVoices = () => {
-    availableVoices = speechSynthesis.getVoices();
+    availableVoices = synth.getVoices();
     populateVoiceSelect();
   };
   
   updateVoices();
-  speechSynthesis.addEventListener('voiceschanged', updateVoices);
+  synth.addEventListener('voiceschanged', updateVoices);
 }
 
 function populateVoiceSelect() {
@@ -1267,13 +1267,13 @@ function handleBotReply(replyText) {
 
 // Text-to-Speech
 function speakText(text) {
-  if (!speechSynthesis) {
+  if (!synth) {
     console.error('Speech synthesis not supported');
     return;
   }
   
   // Stop any ongoing speech
-  speechSynthesis.cancel();
+  synth.cancel();
   
   const utterance = new SpeechSynthesisUtterance(text);
   
@@ -1306,12 +1306,12 @@ function speakText(text) {
     elements.stopBtn.classList.remove('active');
   };
   
-  speechSynthesis.speak(utterance);
+  synth.speak(utterance);
 }
 
 function stopCurrentSpeech() {
-  if (speechSynthesis.speaking) {
-    speechSynthesis.cancel();
+  if (synth.speaking) {
+    synth.cancel();
     elements.stopBtn.classList.remove('active');
   }
 }
@@ -1719,360 +1719,6 @@ function updateSessionLength() {
   }
 }
 
-// Update comprehensive scoring system
-function updateComprehensiveScores(speechAnalysis) {
-  if (!speechAnalysis) return;
-  
-  const {
-    grammarScore = 0,
-    pronunciationScore = 0,
-    vocabularyScore = 0,
-    fluencyScore = 0,
-    overallScore = 0
-  } = speechAnalysis;
-  
-  // Apply weighted updates (new score influences 30%, existing 70%)
-  const updateWeight = 0.3;
-  
-  AppState.scores.grammar = Math.round(
-    (AppState.scores.grammar * (1 - updateWeight)) + (grammarScore * updateWeight)
-  );
-  AppState.scores.pronunciation = Math.round(
-    (AppState.scores.pronunciation * (1 - updateWeight)) + (pronunciationScore * updateWeight)
-  );
-  AppState.scores.vocabulary = Math.round(
-    (AppState.scores.vocabulary * (1 - updateWeight)) + (vocabularyScore * updateWeight)
-  );
-  AppState.scores.fluency = Math.round(
-    (AppState.scores.fluency * (1 - updateWeight)) + (fluencyScore * updateWeight)
-  );
-  
-  // Calculate overall score
-  AppState.scores.overall = Math.round(
-    (AppState.scores.grammar + AppState.scores.pronunciation + 
-     AppState.scores.vocabulary + AppState.scores.fluency) / 4
-  );
-  
-  // Save to localStorage
-  localStorage.setItem('grammarScore', AppState.scores.grammar);
-  localStorage.setItem('pronunciationScore', AppState.scores.pronunciation);
-  localStorage.setItem('vocabularyScore', AppState.scores.vocabulary);
-  localStorage.setItem('fluencyScore', AppState.scores.fluency);
-  localStorage.setItem('overallScore', AppState.scores.overall);
-  
-  // Update UI
-  updateProgressDisplay();
-  
-  console.log('📈 Scores updated:', AppState.scores);
-}
-
-// Display enhanced learning feedback
-function displayEnhancedFeedback(learningFeedback) {
-  const feedbackContainer = document.getElementById('feedback-content');
-  if (!feedbackContainer || !learningFeedback) return;
-  
-  const {
-    grammarFeedback = '',
-    pronunciationFeedback = '',
-    vocabularyFeedback = '',
-    fluencyFeedback = '',
-    overallFeedback = '',
-    suggestions = []
-  } = learningFeedback;
-  
-  const feedbackHtml = `
-    <div class="feedback-section">
-      <h4>📚 Learning Feedback</h4>
-      
-      ${grammarFeedback ? `
-        <div class="feedback-item grammar">
-          <h5><i class="fas fa-grammar"></i> Grammar</h5>
-          <p>${grammarFeedback}</p>
-        </div>
-      ` : ''}
-      
-      ${pronunciationFeedback ? `
-        <div class="feedback-item pronunciation">
-          <h5><i class="fas fa-microphone"></i> Pronunciation</h5>
-          <p>${pronunciationFeedback}</p>
-        </div>
-      ` : ''}
-      
-      ${vocabularyFeedback ? `
-        <div class="feedback-item vocabulary">
-          <h5><i class="fas fa-book"></i> Vocabulary</h5>
-          <p>${vocabularyFeedback}</p>
-        </div>
-      ` : ''}
-      
-      ${fluencyFeedback ? `
-        <div class="feedback-item fluency">
-          <h5><i class="fas fa-comments"></i> Fluency</h5>
-          <p>${fluencyFeedback}</p>
-        </div>
-      ` : ''}
-      
-      ${overallFeedback ? `
-        <div class="feedback-item overall">
-          <h5><i class="fas fa-star"></i> Overall</h5>
-          <p>${overallFeedback}</p>
-        </div>
-      ` : ''}
-      
-      ${suggestions.length > 0 ? `
-        <div class="feedback-item suggestions">
-          <h5><i class="fas fa-lightbulb"></i> Suggestions</h5>
-          <ul>
-            ${suggestions.map(suggestion => `<li>${suggestion}</li>`).join('')}
-          </ul>
-        </div>
-      ` : ''}
-    </div>
-  `;
-  
-  feedbackContainer.innerHTML = feedbackHtml;
-  
-  // Show feedback panel if hidden
-  const feedbackPanel = document.getElementById('feedback-panel');
-  if (feedbackPanel) {
-    feedbackPanel.style.display = 'block';
-  }
-}
-
-// Update session metadata
-function updateSessionMetadata(metadata) {
-  if (!metadata) return;
-  
-  const {
-    sessionDuration = 0,
-    wordsPerMinute = 0,
-    confidenceLevel = 0,
-    interactionQuality = 'good'
-  } = metadata;
-  
-  // Update session stats
-  AppState.sessionDuration = sessionDuration;
-  
-  // Update analytics
-  AppState.analytics.totalMinutes += Math.round(sessionDuration / 60000);
-  localStorage.setItem('totalMinutes', AppState.analytics.totalMinutes);
-  
-  console.log('📊 Session metadata updated:', metadata);
-}
-
-// Generate session report
-function generateSessionReport() {
-  const sessionDuration = Date.now() - AppState.sessionStartTime;
-  const wordsSpoken = AppState.currentSession.wordsSpoken;
-  const messagesCount = AppState.currentSession.messagesCount;
-  const vocabularyUsed = AppState.currentSession.vocabularyUsed.size;
-  
-  const report = {
-    duration: sessionDuration,
-    wordsSpoken,
-    messagesCount,
-    vocabularyUsed,
-    averageWordsPerMessage: Math.round(wordsSpoken / Math.max(messagesCount, 1)),
-    wordsPerMinute: Math.round((wordsSpoken / (sessionDuration / 60000)) || 0),
-    scores: { ...AppState.scores }
-  };
-  
-  console.log('📋 Session Report:', report);
-  
-  // Show session summary toast
-  showToast(`Session: ${messagesCount} messages, ${wordsSpoken} words, ${vocabularyUsed} unique words`, 'info');
-  
-  return report;
-}
-
-// Comprehensive microphone diagnostic
-async function runMicrophoneDiagnostic() {
-  console.log('🔧 Running comprehensive microphone diagnostic...');
-  
-  const diagnostics = {
-    browserSupport: false,
-    mediaDevicesAPI: false,
-    speechRecognition: false,
-    microphoneAccess: false,
-    audioContext: false,
-    permissions: 'unknown',
-    errors: []
-  };
-  
-  try {
-    // Check browser support
-    diagnostics.browserSupport = !!(window.navigator && window.navigator.userAgent);
-    
-    // Check MediaDevices API
-    diagnostics.mediaDevicesAPI = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
-    
-    // Check Speech Recognition
-    diagnostics.speechRecognition = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
-    
-    // Check AudioContext
-    diagnostics.audioContext = !!(window.AudioContext || window.webkitAudioContext);
-    
-    // Test microphone access
-    if (diagnostics.mediaDevicesAPI) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        diagnostics.microphoneAccess = true;
-        diagnostics.permissions = 'granted';
-        
-        // Test audio levels
-        if (diagnostics.audioContext) {
-          const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-          const analyser = audioContext.createAnalyser();
-          const microphone = audioContext.createMediaStreamSource(stream);
-          analyser.fftSize = 256;
-          microphone.connect(analyser);
-          
-          // Clean up
-          stream.getTracks().forEach(track => track.stop());
-          audioContext.close();
-        }
-        
-        stream.getTracks().forEach(track => track.stop());
-        
-      } catch (error) {
-        diagnostics.permissions = error.name;
-        diagnostics.errors.push(`Microphone access: ${error.message}`);
-      }
-    }
-    
-  } catch (error) {
-    diagnostics.errors.push(`Diagnostic error: ${error.message}`);
-  }
-  
-  console.log('🔧 Microphone Diagnostic Results:', diagnostics);
-  
-  // Show diagnostic results
-  showMicrophoneDiagnosticResults(diagnostics);
-  
-  return diagnostics;
-}
-
-// Show microphone diagnostic results
-function showMicrophoneDiagnosticResults(diagnostics) {
-  const issues = [];
-  const fixes = [];
-  
-  if (!diagnostics.browserSupport) {
-    issues.push('Browser not supported');
-    fixes.push('Use Chrome, Edge, or Safari');
-  }
-  
-  if (!diagnostics.mediaDevicesAPI) {
-    issues.push('MediaDevices API not available');
-    fixes.push('Update your browser to the latest version');
-  }
-  
-  if (!diagnostics.speechRecognition) {
-    issues.push('Speech Recognition not supported');
-    fixes.push('Use Chrome, Edge, or Safari for speech recognition');
-  }
-  
-  if (!diagnostics.microphoneAccess) {
-    issues.push('Microphone access denied or unavailable');
-    fixes.push('Allow microphone permissions in browser settings');
-  }
-  
-  if (diagnostics.permissions === 'NotAllowedError') {
-    fixes.push('Click the microphone icon in address bar and allow access');
-  }
-  
-  if (diagnostics.permissions === 'NotFoundError') {
-    fixes.push('Connect a microphone to your device');
-  }
-  
-  const resultHtml = `
-    <div class="diagnostic-results">
-      <h4>🔧 Microphone Diagnostic Results</h4>
-      
-      <div class="diagnostic-status">
-        <p><span class="${diagnostics.browserSupport ? 'success' : 'error'}">●</span> Browser Support: ${diagnostics.browserSupport ? 'OK' : 'Failed'}</p>
-        <p><span class="${diagnostics.mediaDevicesAPI ? 'success' : 'error'}">●</span> Media Devices API: ${diagnostics.mediaDevicesAPI ? 'OK' : 'Failed'}</p>
-        <p><span class="${diagnostics.speechRecognition ? 'success' : 'error'}">●</span> Speech Recognition: ${diagnostics.speechRecognition ? 'OK' : 'Failed'}</p>
-        <p><span class="${diagnostics.microphoneAccess ? 'success' : 'error'}">●</span> Microphone Access: ${diagnostics.microphoneAccess ? 'OK' : 'Failed'}</p>
-        <p><span class="${diagnostics.audioContext ? 'success' : 'error'}">●</span> Audio Context: ${diagnostics.audioContext ? 'OK' : 'Failed'}</p>
-        <p><span class="info">●</span> Permissions: ${diagnostics.permissions}</p>
-      </div>
-      
-      ${issues.length > 0 ? `
-        <div class="diagnostic-issues">
-          <h5>Issues Found:</h5>
-          <ul>
-            ${issues.map(issue => `<li>❌ ${issue}</li>`).join('')}
-          </ul>
-        </div>
-      ` : ''}
-      
-      ${fixes.length > 0 ? `
-        <div class="diagnostic-fixes">
-          <h5>Recommended Fixes:</h5>
-          <ul>
-            ${fixes.map(fix => `<li>💡 ${fix}</li>`).join('')}
-          </ul>
-        </div>
-      ` : ''}
-      
-      ${diagnostics.errors.length > 0 ? `
-        <div class="diagnostic-errors">
-          <h5>Error Details:</h5>
-          <ul>
-            ${diagnostics.errors.map(error => `<li>⚠️ ${error}</li>`).join('')}
-          </ul>
-        </div>
-      ` : ''}
-    </div>
-  `;
-  
-  showToast(resultHtml, 'info');
-}
-
-// Auto-run diagnostic on microphone issues
-function autoFixMicrophoneIssues() {
-  console.log('🔧 Auto-fixing microphone issues...');
-  
-  // Reinitialize speech recognition
-  if (!recognition && (window.SpeechRecognition || window.webkitSpeechRecognition)) {
-    initializeSpeechRecognition();
-  }
-  
-  // Test microphone access again
-  testMicrophoneAccess();
-  
-  // Update UI state
-  if (elements.micBtn) {
-    elements.micBtn.disabled = false;
-    elements.micBtn.style.opacity = '1';
-  }
-}
-
-// Add diagnostic button to help users
-function addMicrophoneDiagnosticButton() {
-  const diagnosticBtn = document.createElement('button');
-  diagnosticBtn.id = 'diagnostic-btn';
-  diagnosticBtn.className = 'diagnostic-btn';
-  diagnosticBtn.innerHTML = '<i class="fas fa-stethoscope"></i> Run Microphone Diagnostic';
-  diagnosticBtn.onclick = runMicrophoneDiagnostic;
-  
-  // Add to controls area
-  const controlsArea = document.querySelector('.controls');
-  if (controlsArea && !document.getElementById('diagnostic-btn')) {
-    controlsArea.appendChild(diagnosticBtn);
-  }
-}
-
-// Initialize diagnostic features
-function initializeDiagnostics() {
-  addMicrophoneDiagnosticButton();
-  
-  // Auto-run diagnostic if microphone issues detected
-  setTimeout(() => {
-    if (!recognition || elements.micBtn.disabled) {
-      console.log('🔧 Microphone issues detected, running auto-diagnostic...');
-      runMicrophoneDiagnostic();
-    }
-  }, 2000);
-}
+// Scoring, feedback rendering and microphone diagnostics live in microphone-fix.js,
+// which loads after this file. Do not redefine them here - later global function
+// declarations win, so a copy in this file would be silently dead code.

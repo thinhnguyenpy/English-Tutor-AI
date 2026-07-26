@@ -361,7 +361,7 @@ async function makeAPICallWithRetry(requestData, maxRetries = 3) {
           Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
           "HTTP-Referer": `http://localhost:${CONFIG.port}`,
           "Content-Type": "application/json",
-          "X-Title": "VoiceGPT Advanced"
+          "X-Title": "English Tutor AI"
         },
         timeout: CONFIG.timeout,
         validateStatus: (status) => status < 500 // Retry on server errors only

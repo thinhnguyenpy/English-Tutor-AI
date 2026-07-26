@@ -1,9 +1,8 @@
-# English Tutor AI Application 
-VoiceGPT Advanced 🎤🤖
+# English Tutor AI 🎤🤖
 
-An advanced voice-enabled AI chatbot with modern UI, multiple AI models, conversation history, and comprehensive features for an enhanced user experience.
+A voice-enabled AI English tutor that gives real-time feedback on your grammar, pronunciation, vocabulary and fluency — powered by the Web Speech API, Socket.IO and multiple LLMs via OpenRouter.
 
-![VoiceGPT Advanced](https://img.shields.io/badge/VoiceGPT-Advanced-blue)
+![English Tutor AI](https://img.shields.io/badge/English%20Tutor-AI-blue)
 ![Node.js](https://img.shields.io/badge/Node.js-16%2B-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
@@ -109,7 +108,7 @@ This settings interface allows learners to create a fully personalized English l
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/thinhnguyenpy/English-Tutor-AI.git
    cd English-Tutor-AI
    ```
 
@@ -152,7 +151,7 @@ Before running the application, ensure you have:
 
 ```bash
 # Navigate to the project directory
-cd English-Turor-AI-git
+cd English-Tutor-AI
 
 # Install all required dependencies
 npm install
@@ -416,6 +415,15 @@ npm run lint
 
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
 
+## 🛠️ Tech Stack
+
+- **Backend**: Node.js, Express.js
+- **Real-time**: Socket.IO (bidirectional voice-to-text data flow)
+- **AI**: OpenRouter API (GPT-4, Claude 3, Gemini)
+- **Voice**: Web Speech API (native browser Speech-to-Text & Text-to-Speech)
+- **Frontend**: Vanilla JavaScript, modern CSS3 (custom properties, Grid, Flexbox)
+- **Hardening**: Helmet, CORS, rate limiting, compression, retry with exponential backoff
+
 ## 🙏 Acknowledgments
 
 - OpenRouter for AI model access
@@ -425,49 +433,11 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 
 ## 📞 Support
 
-For support, please open an issue on GitHub or contact the development team.
+For support, please open an issue on [GitHub](https://github.com/thinhnguyenpy/English-Tutor-AI/issues).
 
+## 🧾 Credits
 
----
+Maintained by **thinhnguyenpy**.
 
-
-
-ased on my analysis of your codebase, here are the recommendations for your project:
-
-Suitable Project Name
-
-- LinguaCoach AI (Recommended)
-- SpeakFluent AI: Intelligent English Speaking Mentor
-- VoiceBridge: AI-Powered Language Learning Platform
-Repo Name
-
-- ai-english-speaking-tutor
-- lingua-coach-voice-ai
-- intelligent-voice-tutor
-Project Tech Stack for Job Role
-
-- Role: Full-Stack Developer (AI Integration)
-  - Stack : Node.js, Express, Socket.io, Web Speech API, OpenRouter (LLMs), Vanilla JS/CSS.
-- Role: Frontend Engineer (Speech & Real-time Systems)
-  - Stack : Web Speech API (STT/TTS), Socket.io Client, CSS3 Custom Properties, Responsive UI Design.
-- Role: Backend Engineer (API & Performance)
-  - Stack : Node.js, Express, Rate Limiting, Helmet Security, Compression, Axios with Retry Logic.
-Major Project Tech Stack Used
-
-- Core Engine : Node.js & Express.js
-- Real-time Engine : Socket.IO (for bidirectional voice-to-text data flow)
-- AI Brain : OpenRouter API (GPT-4, Claude 3, Gemini integration)
-- Voice Processing : Web Speech API (Native browser Speech-to-Text & Text-to-Speech)
-- Styling & UI : Modern CSS3 (Variables, Grid, Flexbox) & Vanilla JavaScript
-Student Project Recommendation This is an excellent project for a student because it demonstrates:
-
-- Real-time Data Handling : Most student projects are static; using Socket.io shows you understand low-latency communication.
-- AI Implementation : You aren't just using a basic API; you've implemented system prompting , personality engineering , and error-correction logic .
-- Native Browser APIs : Using the Web Speech API shows deep knowledge of browser capabilities beyond just standard DOM manipulation.
-- Professional Engineering Practices : Your code includes rate limiting , security headers , retry logic with backoff , and clean documentation .
-Presentation Tip for Interviews :
- "I built a real-time AI English tutor that uses a bidirectional WebSocket connection to provide instantaneous feedback on speech. I chose the Web Speech API for low-latency voice recognition and integrated multiple LLMs via OpenRouter to provide specialized tutoring in grammar, pronunciation, and fluency."
-
-**Built by ABHIJAY KUMAR SHAH 22BCE11001 **
-
+This project builds on [English-Tutor-AI](https://github.com/Abhijayshah/English-Tutor-AI) by Abhijay Kumar Shah, which in turn originates from the [Web Speech AI Chatbot demo](https://github.com/girliemac/web-speech-ai) by Tomomi Imura. Distributed under the MIT License — see [LICENSE.md](LICENSE.md).
 

@@ -6,7 +6,7 @@
 ---
 
 ## 1. PROJECT OVERVIEW
-- **Project Name**: English Tutor AI (VoiceGPT Advanced)
+- **Project Name**: English Tutor AI
 - **Description**: An advanced AI-powered English speaking practice platform that provides real-time feedback on grammar, pronunciation, vocabulary, and fluency using the Web Speech API and state-of-the-art LLMs.
 - **Main Purpose**: To provide a safe, encouraging, and highly interactive environment for English learners to practice speaking and receive instant, constructive feedback.
 - **Target Audience**: ESL (English as a Second Language) learners of all levels (Beginner to Native) seeking to improve their speaking confidence and accuracy.

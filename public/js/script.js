@@ -1688,7 +1688,7 @@ if (document.readyState === 'loading') {
 }
 
 // Export for global access
-window.VoiceGPT = {
+window.EnglishTutorAI = {
   toggleRecording,
   toggleTheme,
   clearHistory: clearConversationHistory,

@@ -1,16 +1,17 @@
 {
-  "name": "Web Speech AI Chatbot Demo",
-  "description": "Simple AI Chat Bot Demo with Web Speech API",
-  "repository": "https://github.com/Abhijayshah/AI-voice-chatbot.git",
-  "keywords": ["ai", "api.ai", "bot", "w3c"],
+  "name": "English Tutor AI",
+  "description": "Voice-enabled AI English tutor with real-time speech feedback on grammar, pronunciation, vocabulary and fluency",
+  "repository": "https://github.com/thinhnguyenpy/English-Tutor-AI",
+  "keywords": ["ai", "english-learning", "speech-recognition", "voice", "socket.io"],
   "env": {
-    "APIAI_TOKEN": {
-      "description": "API.ai Client access token",
-      "value": ""
+    "OPENAI_API_KEY": {
+      "description": "OpenRouter API key (https://openrouter.ai/). Leave empty to run in demo mode.",
+      "value": "",
+      "required": false
     },
-    "APIAI_SESSION_ID": {
-      "description": "An arbitrary string",
-      "value": ""
+    "NODE_ENV": {
+      "description": "Environment mode",
+      "value": "production"
     }
   },
   "image": "heroku/nodejs"

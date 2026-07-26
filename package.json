@@ -1,7 +1,7 @@
 {
-  "name": "voicegpt-advanced",
+  "name": "english-tutor-ai",
   "version": "2.0.0",
-  "description": "Advanced AI Voice Chat Bot with Web Speech API, Multiple Models, and Modern UI",
+  "description": "Voice-enabled AI English tutor with real-time speech feedback on grammar, pronunciation, vocabulary and fluency",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
@@ -11,15 +11,17 @@
     "format": "prettier --write ."
   },
   "keywords": [
+    "english-learning",
+    "language-tutor",
     "voice-chat",
     "ai",
     "speech-recognition",
-    "openai",
+    "text-to-speech",
+    "openrouter",
     "socket.io",
-    "express",
-    "chatbot"
+    "express"
   ],
-  "author": "VoiceGPT Team",
+  "author": "thinhnguyenpy",
   "license": "MIT",
   "dependencies": {
     "axios": "^1.8.4",
@@ -43,10 +45,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-username/voicegpt-advanced.git"
+    "url": "git+https://github.com/thinhnguyenpy/English-Tutor-AI.git"
   },
   "bugs": {
-    "url": "https://github.com/your-username/voicegpt-advanced/issues"
+    "url": "https://github.com/thinhnguyenpy/English-Tutor-AI/issues"
   },
-  "homepage": "https://github.com/your-username/voicegpt-advanced#readme"
+  "homepage": "https://github.com/thinhnguyenpy/English-Tutor-AI#readme"
 }

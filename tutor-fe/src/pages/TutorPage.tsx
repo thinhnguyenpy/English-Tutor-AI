@@ -65,6 +65,9 @@ export default function TutorPage() {
       setNotes([]);
       return;
     }
+    // A turn in flight belongs to the conversation being left; its reply_done
+    // will never arrive here, so `busy` must not carry over and lock the mic.
+    setBusy(false);
     setStreaming("");
     setError(null);
     api.conversations.messages(activeId).then(setMessages).catch(() => setMessages([]));
@@ -90,10 +93,23 @@ export default function TutorPage() {
     onTitle: (title) => {
       if (activeId) patchLocal(activeId, { title });
     },
+    onTurnLimit: (_turnCount, maxTurns) => {
+      setBusy(false);
+      setError(`This conversation has reached its ${maxTurns}-turn limit. Start a new one.`);
+      // Drop the optimistic bubble: the server refused and stored nothing.
+      if (activeId) api.conversations.messages(activeId).then(setMessages).catch(() => {});
+    },
     onError: (detail) => {
       setError(detail);
       setBusy(false);
       setStreaming("");
+    },
+    onDisconnect: () => {
+      if (!busy) return;
+      tts.cancel();
+      setBusy(false);
+      setStreaming("");
+      setError("Connection lost mid-reply. Reconnecting — please say that again.");
     },
   });
 
@@ -337,7 +353,7 @@ function Banners({
       )}
       {socketClosed && (
         <Banner tone="amber" icon={<AlertTriangle size={15} />}>
-          Disconnected from the tutor. Is the backend running on port 8000?
+          Disconnected from the tutor — reconnecting. Is the backend running on port 8000?
         </Banner>
       )}
       {error && (

@@ -3,11 +3,23 @@ node_modules/
 jspm_packages/
 
 # Environment variables & secrets
-# (env.example is intentionally NOT ignored - it is the template)
+# tutor-be/.gitignore re-includes .env.example — it is the template.
 .env
 .env.*
 *.pem
 *.key
+
+# Python (tutor-be)
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Local database (tutor-be)
+*.db
+*.db-wal
+*.db-shm
 
 # Logs
 logs/
@@ -69,3 +81,6 @@ temp/
 
 # Local AI assistant context
 CLAUDE.md
+
+# Working plans and analysis — local only, never committed
+/plans/

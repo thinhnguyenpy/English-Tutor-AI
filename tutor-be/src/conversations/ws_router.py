@@ -51,6 +51,29 @@ def to_message_history(messages: list[Message]) -> list[ModelMessage]:
     return history
 
 
+def trim_to_budget(messages: list[Message], budget: int) -> list[Message]:
+    """Newest messages that fit in `budget` characters, oldest first. Stops at
+    the first message that does not fit, so the kept tail stays contiguous."""
+    kept: list[Message] = []
+    used = 0
+    for m in reversed(messages):
+        used += len(m.text)
+        if used > budget:
+            break
+        kept.append(m)
+    kept.reverse()
+    return kept
+
+
+def turn_error(text: str) -> str | None:
+    """Why a turn is refused before it reaches the model, or None."""
+    if not text:
+        return "Empty turn"
+    if len(text) > settings.MAX_TURN_CHARS:
+        return f"That turn is too long ({len(text)} characters, max {settings.MAX_TURN_CHARS})"
+    return None
+
+
 @router.websocket("/{conversation_id}/live")
 async def live(websocket: WebSocket, conversation_id: UUID) -> None:
     await websocket.accept()
@@ -68,8 +91,8 @@ async def live(websocket: WebSocket, conversation_id: UUID) -> None:
                 continue
 
             text = (frame.get("text") or "").strip()
-            if not text:
-                await sender.send({"type": "error", "detail": "Empty turn"})
+            if error := turn_error(text):
+                await sender.send({"type": "error", "detail": error})
                 continue
 
             if not settings.azure_configured:
@@ -126,7 +149,10 @@ async def _handle_turn(
     tail = await service.list_messages(
         session, conversation_id, limit=settings.RECENT_TURNS_IN_CONTEXT + 1
     )
-    history = to_message_history([m for m in tail if m.id != user_message.id])
+    tail = trim_to_budget(
+        [m for m in tail if m.id != user_message.id], settings.HISTORY_CHAR_BUDGET
+    )
+    history = to_message_history(tail)
 
     # Persona belongs to the conversation; level and feedback style are the
     # student's own settings and ride along on every frame.

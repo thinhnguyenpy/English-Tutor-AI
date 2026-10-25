@@ -44,9 +44,14 @@ class Settings(BaseSettings):
     # Sidebar shows this many active conversations. Creating one past the cap
     # archives the least-recently-active; nothing is ever deleted.
     MAX_ACTIVE_CONVERSATIONS: int = 15
-    # Verbatim turns replayed into the prompt. Anything older is represented by
-    # the rolling summary instead.
+    # Verbatim messages (not exchanges) replayed into the prompt, capped twice:
+    # by count, and by characters so one long monologue cannot blow up every
+    # later prompt. Anything older is represented by the rolling summary.
     RECENT_TURNS_IN_CONTEXT: int = 10
+    HISTORY_CHAR_BUDGET: int = 6000  # ≈ 1500 tokens
+    # One utterance. Speech rarely gets near this; a pasted essay would. Longer
+    # turns are refused with an error, never truncated silently.
+    MAX_TURN_CHARS: int = 1000
     # Cold-path cadence: re-summarize + re-extract memories every N user turns.
     COLD_PASS_EVERY_N_TURNS: int = 6
 

@@ -16,7 +16,9 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 from src.agents.prompts.tutor_prompts import PERSONA_PROMPTS
 from src.agents.tutor_agent import TutorDeps
 from src.conversations import service, ws_router
+from src.conversations.models import Message
 from src.conversations.schemas import ConversationCreate
+from src.core.config import settings
 from src.topics.models import Topic
 
 
@@ -82,3 +84,27 @@ async def test_persona_comes_from_the_conversation_not_the_frame(session, prompt
 
     assert PERSONA_PROMPTS["grammar_tutor"] in prompts[0]
     assert PERSONA_PROMPTS["fluency_coach"] not in prompts[0]
+
+
+def _msg(text: str) -> Message:
+    return Message(role="user", text=text)
+
+
+def test_history_keeps_the_newest_messages_that_fit():
+    messages = [_msg("a" * 50), _msg("b" * 30), _msg("c" * 30)]
+
+    kept = ws_router.trim_to_budget(messages, budget=70)
+
+    assert [m.text[0] for m in kept] == ["b", "c"]
+
+
+def test_history_tail_stays_contiguous_past_an_oversized_message():
+    messages = [_msg("a" * 5), _msg("b" * 500), _msg("c" * 5)]
+
+    assert [m.text[0] for m in ws_router.trim_to_budget(messages, budget=100)] == ["c"]
+
+
+def test_overlong_and_empty_turns_are_refused_before_the_model():
+    assert ws_router.turn_error("") == "Empty turn"
+    assert ws_router.turn_error("x" * settings.MAX_TURN_CHARS) is None
+    assert "too long" in ws_router.turn_error("x" * (settings.MAX_TURN_CHARS + 1))

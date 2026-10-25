@@ -32,7 +32,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.agents.prompts.tutor_prompts import WRAP_UP_RULE
 from src.agents.tutor_agent import TutorDeps, build_tutor_agent
 from src.conversations import service
-from src.conversations.cold import SocketSender, schedule_cold_pass
+from src.conversations.cold import SocketSender, schedule_cold_pass, schedule_final_pass
 from src.conversations.models import ROLE_ASSISTANT, ROLE_USER, Conversation, Message
 from src.core.config import settings
 from src.core.database import SessionLocal
@@ -116,6 +116,7 @@ async def live(websocket: WebSocket, conversation_id: UUID) -> None:
 
     except WebSocketDisconnect:
         logger.info("WS closed for conversation {}", conversation_id)
+        schedule_final_pass(conversation_id)
 
 
 async def _topic_seed(session: AsyncSession, conversation: Conversation) -> str | None:
@@ -209,4 +210,6 @@ async def _handle_turn(
         conversation_id=conversation_id,
         user_message_id=user_message.id,
         user_text=text,
+        turn_number=conversation.turn_count,
+        final=conversation.turn_count == max_turns,
     )

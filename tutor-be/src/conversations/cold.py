@@ -58,23 +58,41 @@ class SocketSender:
                 logger.debug("Dropped frame {} — socket gone", payload.get("type"))
 
 
+def _spawn(coro) -> None:
+    task = asyncio.create_task(coro)
+    _BACKGROUND_TASKS.add(task)
+    task.add_done_callback(_BACKGROUND_TASKS.discard)
+
+
 def schedule_cold_pass(
     *,
     sender: SocketSender,
     conversation_id: UUID,
     user_message_id: UUID,
     user_text: str,
+    turn_number: int,
+    final: bool = False,
 ) -> None:
-    task = asyncio.create_task(
+    """`turn_number` is captured by the hot path when the turn is saved. The
+    pass must not re-read `turn_count`: by the time feedback finishes the
+    student may have spoken again, which used to skip titles and whole
+    summary/memory cycles. `final` mines the tail at the turn cap."""
+    _spawn(
         _run_cold_pass(
             sender=sender,
             conversation_id=conversation_id,
             user_message_id=user_message_id,
             user_text=user_text,
+            turn_number=turn_number,
+            final=final,
         )
     )
-    _BACKGROUND_TASKS.add(task)
-    task.add_done_callback(_BACKGROUND_TASKS.discard)
+
+
+def schedule_final_pass(conversation_id: UUID) -> None:
+    """On disconnect: memory for whatever the periodic passes have not seen
+    yet, so a conversation that ends at turn 5 is still remembered."""
+    _spawn(_run_final_pass(conversation_id))
 
 
 async def _run_cold_pass(
@@ -83,6 +101,8 @@ async def _run_cold_pass(
     conversation_id: UUID,
     user_message_id: UUID,
     user_text: str,
+    turn_number: int,
+    final: bool,
 ) -> None:
     if not settings.azure_configured:
         return
@@ -91,25 +111,53 @@ async def _run_cold_pass(
     async with SessionLocal() as session:
         await _guard("feedback", _feedback_pass(sender, session, user_message_id, user_text))
 
+        if turn_number == 1:
+            await _guard("title", _title_pass(sender, session, conversation_id))
+
+        if final or turn_number % settings.COLD_PASS_EVERY_N_TURNS == 0:
+            await _memory_cycle(session, conversation_id, turn_number)
+
+
+async def _run_final_pass(conversation_id: UUID) -> None:
+    if not settings.azure_configured:
+        return
+    async with SessionLocal() as session:
         try:
             conversation = await conversation_service.get_conversation(session, conversation_id)
         except Exception as exc:  # noqa: BLE001
-            logger.warning("Cold pass: conversation {} vanished ({})", conversation_id, exc)
+            logger.warning("Final pass: conversation {} vanished ({})", conversation_id, exc)
             return
-
-        if conversation.turn_count == 1:
-            await _guard("title", _title_pass(sender, session, conversation_id))
-
-        if conversation.turn_count % settings.COLD_PASS_EVERY_N_TURNS == 0:
-            await _guard("summary", _summary_pass(session, conversation_id))
-            await _guard("memory", _memory_pass(session, conversation_id))
+        if conversation.turn_count > conversation.memory_pass_turn:
+            await _memory_cycle(session, conversation_id, conversation.turn_count)
 
 
-async def _guard(label: str, coro) -> None:
+# Conversations with a summary + memory cycle running. The turn-cap pass and
+# the disconnect that follows it would otherwise extract the same tail twice.
+_CYCLES_IN_FLIGHT: set[UUID] = set()
+
+
+async def _memory_cycle(session: AsyncSession, conversation_id: UUID, turn_number: int) -> None:
+    if conversation_id in _CYCLES_IN_FLIGHT:
+        return
+    _CYCLES_IN_FLIGHT.add(conversation_id)
+    try:
+        await _guard("summary", _summary_pass(session, conversation_id))
+        if await _guard("memory", _memory_pass(session, conversation_id)):
+            conversation = await conversation_service.get_conversation(session, conversation_id)
+            conversation.memory_pass_turn = max(conversation.memory_pass_turn, turn_number)
+            await session.commit()
+    finally:
+        _CYCLES_IN_FLIGHT.discard(conversation_id)
+
+
+async def _guard(label: str, coro) -> bool:
+    """Run one step; a failure is logged and reported as False, never raised."""
     try:
         await coro
     except Exception as exc:  # noqa: BLE001
         logger.opt(exception=True).warning("Cold pass step {!r} failed: {}", label, exc)
+        return False
+    return True
 
 
 # --- individual passes -------------------------------------------------------

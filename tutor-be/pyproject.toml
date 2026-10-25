@@ -1,0 +1,56 @@
+[project]
+name = "english-tutor-ai"
+version = "0.1.0"
+description = "Local AI English tutor — persistent conversations with a tutor that remembers the student"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi[standard]>=0.115",
+    "sqlalchemy[asyncio]>=2.0",
+    "aiosqlite>=0.20",
+    "alembic>=1.14",
+    "pydantic>=2.10",
+    "pydantic-ai>=0.1",
+    "pydantic-settings>=2.7",
+    "loguru>=0.7",
+    "orjson>=3.10",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.8",
+]
+
+[tool.pytest.ini_options]
+# The project is not installed as a package (uv treats it as a virtual
+# project), so `src` is only importable if the repo root is on the path.
+pythonpath = ["."]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-ra --strict-markers"
+# Async tests run via asyncio_mode=auto — no per-test event_loop boilerplate.
+# Pin the fixture loop scope so pytest-asyncio 1.x doesn't warn.
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+filterwarnings = [
+  "error",
+]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+src = ["src"]
+# Alembic writes these; `make migrate` output should not fail `make lint`.
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.isort]
+# Without this, isort files `src` under third-party and merges it into the
+# stdlib/vendor block.
+known-first-party = ["src"]

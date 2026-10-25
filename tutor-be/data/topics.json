@@ -1,0 +1,86 @@
+[
+  {
+    "slug": "daily-routine",
+    "title": "Your typical day",
+    "level": "beginner",
+    "prompt_seed": "Get the student talking about their daily routine — when they wake up, how they get to work or school, what they do in the evening. Ask about small concrete details rather than generalities.",
+    "sort_order": 10
+  },
+  {
+    "slug": "hometown",
+    "title": "Where you grew up",
+    "level": "beginner",
+    "prompt_seed": "Ask about the student's hometown: what it looks like, what it is known for, how it has changed, whether they would move back.",
+    "sort_order": 20
+  },
+  {
+    "slug": "food",
+    "title": "Food and cooking",
+    "level": "beginner",
+    "prompt_seed": "Talk about food — what they ate today, dishes from their region, whether they cook, a meal they would recommend to a visitor.",
+    "sort_order": 30
+  },
+  {
+    "slug": "weekend-plans",
+    "title": "Weekends and free time",
+    "level": "beginner",
+    "prompt_seed": "Ask what the student does with their free time, what last weekend looked like, and what they wish they had more time for.",
+    "sort_order": 40
+  },
+  {
+    "slug": "work-life",
+    "title": "Work and career",
+    "level": "intermediate",
+    "prompt_seed": "Explore the student's job: what they actually do day to day, what is hard about it, where they want to be in a few years.",
+    "sort_order": 50
+  },
+  {
+    "slug": "travel",
+    "title": "Travel and places",
+    "level": "intermediate",
+    "prompt_seed": "Talk about a trip the student has taken or wants to take. Push for narrative — what happened, what went wrong, what surprised them.",
+    "sort_order": 60
+  },
+  {
+    "slug": "technology",
+    "title": "Technology in daily life",
+    "level": "intermediate",
+    "prompt_seed": "Discuss how technology shows up in the student's life — apps they rely on, something that frustrates them, whether they think it helps or distracts.",
+    "sort_order": 70
+  },
+  {
+    "slug": "job-interview",
+    "title": "Job interview practice",
+    "level": "intermediate",
+    "prompt_seed": "Run a light job interview. Ask one question at a time, let the student answer fully, then give a short reaction before the next question.",
+    "sort_order": 80
+  },
+  {
+    "slug": "small-talk",
+    "title": "Small talk with strangers",
+    "level": "intermediate",
+    "prompt_seed": "Practise social small talk — meeting someone at a conference, chatting with a taxi driver, waiting in a queue. Model natural openers and let the student respond.",
+    "sort_order": 90
+  },
+  {
+    "slug": "opinions",
+    "title": "Giving opinions and disagreeing",
+    "level": "advanced",
+    "prompt_seed": "Pick a low-stakes debatable topic and draw out the student's opinion. Push back politely so they practise defending a view and conceding a point.",
+    "sort_order": 100
+  },
+  {
+    "slug": "storytelling",
+    "title": "Telling a story",
+    "level": "advanced",
+    "prompt_seed": "Get the student to tell an extended story from their life. Stay quiet and let them run; prompt only when they stall, and focus on narrative tenses.",
+    "sort_order": 110
+  },
+  {
+    "slug": "presentations",
+    "title": "Explaining your work",
+    "level": "advanced",
+    "prompt_seed": "Have the student explain something they know well to a non-expert. Ask naive follow-up questions so they practise rephrasing and simplifying.",
+    "sort_order": 120
+  }
+]

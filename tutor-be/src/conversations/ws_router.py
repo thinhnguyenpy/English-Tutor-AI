@@ -1,0 +1,155 @@
+"""Live conversational turn over a WebSocket.
+
+Protocol (JSON frames):
+
+    client → {"type": "user_turn", "text": "...", "persona": "...",
+              "difficulty": "...", "feedback_style": "..."}
+    server → {"type": "reply_delta", "text": "..."}      streamed
+    server → {"type": "reply_done", "message_id": "...", "user_message_id": "..."}
+    server → {"type": "feedback", "message_id": "...", "items": [...]}   cold
+    server → {"type": "title", "title": "..."}                           cold
+    server → {"type": "error", "detail": "..."}
+
+Deltas are streamed so the browser's speech synthesiser can start reading the
+first sentence while the rest is still being generated.
+"""
+
+from uuid import UUID
+
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from loguru import logger
+from pydantic_ai.messages import (
+    ModelMessage,
+    ModelRequest,
+    ModelResponse,
+    TextPart,
+    UserPromptPart,
+)
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.agents.tutor_agent import TutorDeps, build_tutor_agent
+from src.conversations import service
+from src.conversations.cold import SocketSender, schedule_cold_pass
+from src.conversations.models import ROLE_ASSISTANT, ROLE_USER, Message
+from src.core.config import settings
+from src.core.database import SessionLocal
+
+router = APIRouter(prefix="/conversations", tags=["live"])
+
+
+def to_message_history(messages: list[Message]) -> list[ModelMessage]:
+    """Replay stored turns as real request/response pairs rather than a
+    flattened transcript, so the model sees who said what."""
+    history: list[ModelMessage] = []
+    for m in messages:
+        if m.role == ROLE_USER:
+            history.append(ModelRequest(parts=[UserPromptPart(content=m.text)]))
+        else:
+            history.append(ModelResponse(parts=[TextPart(content=m.text)]))
+    return history
+
+
+@router.websocket("/{conversation_id}/live")
+async def live(websocket: WebSocket, conversation_id: UUID) -> None:
+    await websocket.accept()
+    logger.info("WS open for conversation {}", conversation_id)
+    sender = SocketSender(websocket)
+
+    try:
+        while True:
+            frame = await websocket.receive_json()
+
+            if frame.get("type") != "user_turn":
+                await sender.send(
+                    {"type": "error", "detail": f"Unknown frame type {frame.get('type')!r}"}
+                )
+                continue
+
+            text = (frame.get("text") or "").strip()
+            if not text:
+                await sender.send({"type": "error", "detail": "Empty turn"})
+                continue
+
+            if not settings.azure_configured:
+                await sender.send(
+                    {
+                        "type": "error",
+                        "detail": "Tutor is not configured — set AZURE_LLM_* in tutor-be/.env",
+                    }
+                )
+                continue
+
+            try:
+                async with SessionLocal() as session:
+                    await _handle_turn(sender, session, conversation_id, text, frame)
+            except Exception as exc:  # noqa: BLE001 — one bad turn must not close the socket
+                logger.opt(exception=True).error("Turn failed: {}", exc)
+                await sender.send({"type": "error", "detail": str(exc)})
+
+    except WebSocketDisconnect:
+        logger.info("WS closed for conversation {}", conversation_id)
+
+
+async def _handle_turn(
+    sender: SocketSender,
+    session: AsyncSession,
+    conversation_id: UUID,
+    text: str,
+    frame: dict,
+) -> None:
+    from src.memories.context import build_context
+
+    conversation = await service.get_conversation(session, conversation_id)
+
+    # Persist the student's turn first: if the model call fails, what they said
+    # is not lost.
+    user_message = await service.append_message(
+        session, conversation_id, role=ROLE_USER, text=text, bump_turn=True
+    )
+
+    # The tail still ends with the turn just saved — drop it, since it is the
+    # prompt rather than history.
+    tail = await service.list_messages(
+        session, conversation_id, limit=settings.RECENT_TURNS_IN_CONTEXT + 1
+    )
+    history = to_message_history([m for m in tail if m.id != user_message.id])
+
+    system_prompt = await build_context(
+        session,
+        conversation,
+        persona=frame.get("persona"),
+        difficulty=frame.get("difficulty", "intermediate"),
+        feedback_style=frame.get("feedback_style", "gentle"),
+    )
+
+    agent = build_tutor_agent()
+    chunks: list[str] = []
+    async with agent.run_stream(
+        text, deps=TutorDeps(system_prompt=system_prompt), message_history=history
+    ) as result:
+        async for delta in result.stream_text(delta=True):
+            chunks.append(delta)
+            await sender.send({"type": "reply_delta", "text": delta})
+
+    reply = "".join(chunks).strip()
+    assistant_message = await service.append_message(
+        session, conversation_id, role=ROLE_ASSISTANT, text=reply
+    )
+
+    await sender.send(
+        {
+            "type": "reply_done",
+            "message_id": str(assistant_message.id),
+            "user_message_id": str(user_message.id),
+        }
+    )
+
+    # Everything past this point is detached: the student already has their
+    # reply, so grammar notes and memory extraction can take as long as they
+    # need without anyone waiting.
+    schedule_cold_pass(
+        sender=sender,
+        conversation_id=conversation_id,
+        user_message_id=user_message.id,
+        user_text=text,
+    )

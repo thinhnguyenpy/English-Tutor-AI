@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     # Sidebar shows this many active conversations. Creating one past the cap
     # archives the least-recently-active; nothing is ever deleted.
     MAX_ACTIVE_CONVERSATIONS: int = 15
+    # Student turns per conversation. The last one gets a wrap-up instruction;
+    # past it the tutor refuses and the student starts a fresh conversation.
+    # Bounds the per-conversation transcripts the cold path re-reads.
+    MAX_TURNS_PER_CONVERSATION: int = 30
     # Verbatim messages (not exchanges) replayed into the prompt, capped twice:
     # by count, and by characters so one long monologue cannot blow up every
     # later prompt. Anything older is represented by the rolling summary.

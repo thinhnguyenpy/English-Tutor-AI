@@ -24,6 +24,8 @@ export interface Conversation {
   persona: Persona;
   summary: string | null;
   turn_count: number;
+  /** Server setting MAX_TURNS_PER_CONVERSATION. */
+  max_turns: number;
   created_at: string;
   last_active_at: string;
 }
@@ -154,7 +156,14 @@ export interface UserTurnFrame {
 
 export type ServerFrame =
   | { type: "reply_delta"; text: string }
-  | { type: "reply_done"; message_id: string; user_message_id: string }
+  | {
+      type: "reply_done";
+      message_id: string;
+      user_message_id: string;
+      turn_count: number;
+      max_turns: number;
+    }
+  | { type: "turn_limit"; turn_count: number; max_turns: number }
   | { type: "feedback"; message_id: string; items: TurnFeedback[] }
   | { type: "title"; title: string }
   | { type: "error"; detail: string };

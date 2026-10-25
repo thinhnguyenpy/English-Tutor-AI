@@ -1,9 +1,10 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
 from src.agents.prompts.tutor_prompts import PERSONA_PROMPTS
+from src.core.config import settings
 
 
 def _known_persona(value: str | None) -> str | None:
@@ -42,6 +43,11 @@ class ConversationOut(BaseModel):
     turn_count: int
     created_at: datetime
     last_active_at: datetime
+
+    @computed_field
+    @property
+    def max_turns(self) -> int:
+        return settings.MAX_TURNS_PER_CONVERSATION
 
 
 class MessageOut(BaseModel):

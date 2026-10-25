@@ -5,7 +5,9 @@ Protocol (JSON frames):
     client → {"type": "user_turn", "text": "...",
               "difficulty": "...", "feedback_style": "..."}
     server → {"type": "reply_delta", "text": "..."}      streamed
-    server → {"type": "reply_done", "message_id": "...", "user_message_id": "..."}
+    server → {"type": "reply_done", "message_id": "...", "user_message_id": "...",
+              "turn_count": n, "max_turns": 30}
+    server → {"type": "turn_limit", "turn_count": n, "max_turns": 30}   refused
     server → {"type": "feedback", "message_id": "...", "items": [...]}   cold
     server → {"type": "title", "title": "..."}                           cold
     server → {"type": "error", "detail": "..."}
@@ -27,6 +29,7 @@ from pydantic_ai.messages import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.agents.prompts.tutor_prompts import WRAP_UP_RULE
 from src.agents.tutor_agent import TutorDeps, build_tutor_agent
 from src.conversations import service
 from src.conversations.cold import SocketSender, schedule_cold_pass
@@ -137,6 +140,13 @@ async def _handle_turn(
     from src.memories.context import build_context
 
     conversation = await service.get_conversation(session, conversation_id)
+    max_turns = settings.MAX_TURNS_PER_CONVERSATION
+    if conversation.turn_count >= max_turns:
+        # Refused before anything is stored or any model is called.
+        await sender.send(
+            {"type": "turn_limit", "turn_count": conversation.turn_count, "max_turns": max_turns}
+        )
+        return
 
     # Persist the student's turn first: if the model call fails, what they said
     # is not lost.
@@ -164,6 +174,8 @@ async def _handle_turn(
         feedback_style=frame.get("feedback_style", "gentle"),
         topic_seed=await _topic_seed(session, conversation),
     )
+    if conversation.turn_count == max_turns:
+        system_prompt = f"{system_prompt}\n\n{WRAP_UP_RULE}"
 
     agent = build_tutor_agent()
     chunks: list[str] = []
@@ -184,6 +196,8 @@ async def _handle_turn(
             "type": "reply_done",
             "message_id": str(assistant_message.id),
             "user_message_id": str(user_message.id),
+            "turn_count": conversation.turn_count,
+            "max_turns": max_turns,
         }
     )
 

@@ -13,7 +13,7 @@ from pydantic_ai import Agent
 from pydantic_ai.messages import ModelMessage, ModelRequest
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
-from src.agents.prompts.tutor_prompts import PERSONA_PROMPTS
+from src.agents.prompts.tutor_prompts import PERSONA_PROMPTS, WRAP_UP_RULE
 from src.agents.tutor_agent import TutorDeps
 from src.conversations import service, ws_router
 from src.conversations.models import Message
@@ -108,3 +108,26 @@ def test_overlong_and_empty_turns_are_refused_before_the_model():
     assert ws_router.turn_error("") == "Empty turn"
     assert ws_router.turn_error("x" * settings.MAX_TURN_CHARS) is None
     assert "too long" in ws_router.turn_error("x" * (settings.MAX_TURN_CHARS + 1))
+
+
+async def test_last_turn_wraps_up_and_the_next_is_refused(session, prompts, monkeypatch):
+    monkeypatch.setattr(settings, "MAX_TURNS_PER_CONVERSATION", 2)
+    conv = await service.create_conversation(session, ConversationCreate())
+
+    first = await _turn(session, conv)
+    second = await _turn(session, conv)
+    third = await _turn(session, conv)
+
+    assert WRAP_UP_RULE.strip() not in prompts[0]
+    assert WRAP_UP_RULE.strip() in prompts[1]
+    assert first.frames[-1] | {"message_id": None, "user_message_id": None} == {
+        "type": "reply_done",
+        "message_id": None,
+        "user_message_id": None,
+        "turn_count": 1,
+        "max_turns": 2,
+    }
+    assert second.frames[-1]["turn_count"] == 2
+    assert third.frames == [{"type": "turn_limit", "turn_count": 2, "max_turns": 2}]
+    assert len(prompts) == 2, "the refused turn must not reach the model"
+    assert len(await service.list_messages(session, conv.id)) == 4, "nor be stored"

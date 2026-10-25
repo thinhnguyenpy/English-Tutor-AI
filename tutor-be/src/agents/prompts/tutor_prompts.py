@@ -94,6 +94,12 @@ family is. Do not recite them back as a list, and do not claim to remember
 something that is not in the notes.
 """
 
+WRAP_UP_RULE = """\
+This is the student's last turn in this conversation. Reply warmly in two or
+three sentences: react to what they just said, name one thing they did well
+today, and say goodbye. Do not ask a question.
+"""
+
 
 def build_system_prompt(
     persona: str = DEFAULT_PERSONA,

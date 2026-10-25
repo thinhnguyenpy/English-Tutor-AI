@@ -2,7 +2,7 @@
 
 Protocol (JSON frames):
 
-    client → {"type": "user_turn", "text": "...", "persona": "...",
+    client → {"type": "user_turn", "text": "...",
               "difficulty": "...", "feedback_style": "..."}
     server → {"type": "reply_delta", "text": "..."}      streamed
     server → {"type": "reply_done", "message_id": "...", "user_message_id": "..."}
@@ -30,9 +30,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.agents.tutor_agent import TutorDeps, build_tutor_agent
 from src.conversations import service
 from src.conversations.cold import SocketSender, schedule_cold_pass
-from src.conversations.models import ROLE_ASSISTANT, ROLE_USER, Message
+from src.conversations.models import ROLE_ASSISTANT, ROLE_USER, Conversation, Message
 from src.core.config import settings
 from src.core.database import SessionLocal
+from src.core.exceptions import TopicNotFound
+from src.topics import service as topic_service
 
 router = APIRouter(prefix="/conversations", tags=["live"])
 
@@ -90,6 +92,18 @@ async def live(websocket: WebSocket, conversation_id: UUID) -> None:
         logger.info("WS closed for conversation {}", conversation_id)
 
 
+async def _topic_seed(session: AsyncSession, conversation: Conversation) -> str | None:
+    """The topic's tutor-facing seed, or None. A topic removed from
+    data/topics.json after the conversation started just stops steering."""
+    if not conversation.topic_slug:
+        return None
+    try:
+        topic = await topic_service.get_by_slug(session, conversation.topic_slug)
+    except TopicNotFound:
+        return None
+    return topic.prompt_seed
+
+
 async def _handle_turn(
     sender: SocketSender,
     session: AsyncSession,
@@ -114,12 +128,15 @@ async def _handle_turn(
     )
     history = to_message_history([m for m in tail if m.id != user_message.id])
 
+    # Persona belongs to the conversation; level and feedback style are the
+    # student's own settings and ride along on every frame.
     system_prompt = await build_context(
         session,
         conversation,
-        persona=frame.get("persona"),
+        persona=conversation.persona,
         difficulty=frame.get("difficulty", "intermediate"),
         feedback_style=frame.get("feedback_style", "gentle"),
+        topic_seed=await _topic_seed(session, conversation),
     )
 
     agent = build_tutor_agent()

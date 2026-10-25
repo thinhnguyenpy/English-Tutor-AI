@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { api } from "@/api/client";
-import type { Conversation } from "@/api/types";
+import type { Conversation, Persona } from "@/api/types";
 
 const LAST_OPEN_KEY = "tutor.lastConversationId";
 
@@ -58,6 +58,11 @@ export function useConversations() {
     setConversations((prev) => prev.map((c) => (c.id === id ? updated : c)));
   }, []);
 
+  const setPersona = useCallback(async (id: string, persona: Persona) => {
+    const updated = await api.conversations.update(id, { persona });
+    setConversations((prev) => prev.map((c) => (c.id === id ? updated : c)));
+  }, []);
+
   const remove = useCallback(
     async (id: string) => {
       await api.conversations.remove(id);
@@ -80,6 +85,7 @@ export function useConversations() {
     refresh,
     create,
     rename,
+    setPersona,
     remove,
     patchLocal,
   };

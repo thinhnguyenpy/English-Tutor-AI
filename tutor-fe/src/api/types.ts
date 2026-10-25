@@ -148,7 +148,6 @@ export type FeedbackStyle = "gentle" | "detailed" | "immediate" | "summary";
 export interface UserTurnFrame {
   type: "user_turn";
   text: string;
-  persona?: Persona;
   difficulty?: Difficulty;
   feedback_style?: FeedbackStyle;
 }

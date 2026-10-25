@@ -40,7 +40,9 @@ export default function TutorPage() {
   const [notes, setNotes] = useState<TurnFeedback[]>([]);
   const [topics, setTopics] = useState<Topic[]>([]);
   const [panel, setPanel] = useState<SidePanel>("memories");
-  const [persona, setPersona] = useState<Persona>("conversation_partner");
+  // Persona lives on the conversation (server-side), so it survives reloads.
+  const persona: Persona =
+    conversations.find((c) => c.id === activeId)?.persona ?? "conversation_partner";
 
   const tts = useSpeechSynthesis();
 
@@ -110,7 +112,7 @@ export default function TutorPage() {
       if (!activeId) return;
       tts.cancel();
       setError(null);
-      const sent = socket.sendTurn({ text: transcript, persona });
+      const sent = socket.sendTurn({ text: transcript });
       if (!sent) {
         setError("Not connected to the tutor. Check the backend is running.");
         return;
@@ -126,7 +128,7 @@ export default function TutorPage() {
         },
       ]);
     },
-    [activeId, persona, socket, tts],
+    [activeId, socket, tts],
   );
 
   const speech = useSpeechRecognition({ onResult: handleTranscript });
@@ -179,7 +181,10 @@ export default function TutorPage() {
         <header className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3">
           <select
             value={persona}
-            onChange={(e) => setPersona(e.target.value as Persona)}
+            disabled={!activeId}
+            onChange={(e) => {
+              if (activeId) conversationsState.setPersona(activeId, e.target.value as Persona);
+            }}
             className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-700 outline-none focus:border-brand-400"
           >
             {Object.entries(PERSONA_LABELS).map(([value, label]) => (

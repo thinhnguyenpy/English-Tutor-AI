@@ -19,6 +19,7 @@ import ConversationSidebar from "@/components/ConversationSidebar";
 import FeedbackPanel from "@/components/FeedbackPanel";
 import MemoryPanel from "@/components/MemoryPanel";
 import MicButton from "@/components/MicButton";
+import TextTurnInput from "@/components/TextTurnInput";
 import TopicPicker from "@/components/TopicPicker";
 import { useConversations } from "@/hooks/useConversations";
 import { useLearnerSettings } from "@/hooks/useLearnerSettings";
@@ -206,8 +207,8 @@ export default function TutorPage() {
   const turnsLeft = maxTurns - turnCount;
   const limitReached = Boolean(active) && turnsLeft <= 0;
 
-  const micDisabled =
-    !activeId || !speech.supported || health?.tutor_configured === false || limitReached;
+  const cannotTalk = !activeId || health?.tutor_configured === false || limitReached;
+  const micDisabled = cannotTalk || !speech.supported;
 
   // --- render ----------------------------------------------------------------
 
@@ -338,6 +339,7 @@ export default function TutorPage() {
               </p>
             )
           )}
+          <TextTurnInput disabled={cannotTalk || busy} onSend={handleTranscript} />
           <p className="h-4 text-xs text-slate-400">
             {busy
               ? "Tutor is replying…"

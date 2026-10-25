@@ -21,6 +21,7 @@ export interface Conversation {
   title: string;
   topic_slug: string | null;
   status: ConversationStatus;
+  persona: Persona;
   summary: string | null;
   turn_count: number;
   created_at: string;
@@ -39,11 +40,13 @@ export interface Message {
 export interface ConversationCreate {
   title?: string | null;
   topic_slug?: string | null;
+  persona?: Persona | null;
 }
 
 export interface ConversationUpdate {
   title?: string | null;
   status?: ConversationStatus | null;
+  persona?: Persona | null;
 }
 
 // --- memories ----------------------------------------------------------------

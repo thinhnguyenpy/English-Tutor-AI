@@ -74,3 +74,25 @@ async def test_under_cap_archives_nothing(session, count):
     for i in range(count):
         await _create(session, f"conv-{i}")
     assert len(await service.list_conversations(session, status=ARCHIVED)) == 0
+
+
+async def test_persona_is_stored_per_conversation(session):
+    from src.conversations.schemas import ConversationUpdate
+
+    grammar = await service.create_conversation(
+        session, ConversationCreate(persona="grammar_tutor")
+    )
+    default = await service.create_conversation(session, ConversationCreate())
+    assert (grammar.persona, default.persona) == ("grammar_tutor", "conversation_partner")
+
+    updated = await service.update_conversation(
+        session, default.id, ConversationUpdate(persona="fluency_coach")
+    )
+    assert updated.persona == "fluency_coach"
+
+
+def test_unknown_persona_is_rejected_not_silently_defaulted():
+    import pydantic
+
+    with pytest.raises(pydantic.ValidationError):
+        ConversationCreate(persona="pirate")

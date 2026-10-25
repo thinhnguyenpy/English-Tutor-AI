@@ -6,6 +6,7 @@ from loguru import logger
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.agents.prompts.tutor_prompts import DEFAULT_PERSONA
 from src.conversations.models import ACTIVE, ARCHIVED, Conversation, Message
 from src.conversations.schemas import ConversationCreate, ConversationUpdate
 from src.core.base_model import time_now
@@ -34,6 +35,7 @@ async def create_conversation(session: AsyncSession, data: ConversationCreate) -
     conv = Conversation(
         title=data.title or "New conversation",
         topic_slug=data.topic_slug,
+        persona=data.persona or DEFAULT_PERSONA,
         status=ACTIVE,
         last_active_at=time_now(),
     )
@@ -87,6 +89,8 @@ async def update_conversation(
         conv.title = data.title
     if data.status is not None:
         conv.status = data.status
+    if data.persona is not None:
+        conv.persona = data.persona
     await session.commit()
     await session.refresh(conv)
     return conv

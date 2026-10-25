@@ -107,3 +107,27 @@ async def test_recent_turns_are_chronological_and_capped(session):
     assert len(tail) == settings.RECENT_TURNS_IN_CONTEXT
     assert tail[0].text == f"turn-{total - settings.RECENT_TURNS_IN_CONTEXT}"
     assert tail[-1].text == f"turn-{total - 1}"
+
+
+async def test_memory_block_is_capped_keeping_profile_then_most_recent(session, monkeypatch):
+    from datetime import timedelta
+
+    from src.core.base_model import time_now
+
+    monkeypatch.setattr(settings, "MAX_MEMORIES_IN_CONTEXT", 3)
+    conv = await _conversation(session)
+    now = time_now()
+    old_profile = _memory(kind="profile", content="Lives in Hue")
+    old_profile.last_seen_at = now - timedelta(days=90)
+    session.add(old_profile)
+    for days, content in [(1, "Likes football"), (2, "Wants band 7"), (30, "Hates mornings")]:
+        fact = _memory(kind="preference", content=content)
+        fact.last_seen_at = now - timedelta(days=days)
+        session.add(fact)
+    await session.commit()
+
+    prompt = await build_context(session, conv)
+
+    assert "Lives in Hue" in prompt, "profile survives despite being the oldest"
+    assert "Likes football" in prompt and "Wants band 7" in prompt
+    assert "Hates mornings" not in prompt

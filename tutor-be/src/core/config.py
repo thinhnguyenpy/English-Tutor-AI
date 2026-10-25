@@ -56,6 +56,8 @@ class Settings(BaseSettings):
     # One utterance. Speech rarely gets near this; a pasted essay would. Longer
     # turns are refused with an error, never truncated silently.
     MAX_TURN_CHARS: int = 1000
+    # Memory notes sent with every turn (~15 tokens each).
+    MAX_MEMORIES_IN_CONTEXT: int = 40
     # Cold-path cadence: re-summarize + re-extract memories every N user turns.
     COLD_PASS_EVERY_N_TURNS: int = 6
 

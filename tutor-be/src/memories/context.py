@@ -2,10 +2,11 @@
 
 Three tiers, cheapest first:
 
-1. **Memory notes** — every active `Memory` row, verbatim. A few hundred facts
-   is still only 1-2k tokens, so there is nothing to retrieve or rank yet. When
-   this stops fitting, the next step is SQLite's built-in FTS5, and only after
-   that embeddings.
+1. **Memory notes** — active `Memory` rows, verbatim, capped at
+   `MAX_MEMORIES_IN_CONTEXT` (profile facts first, then most recently seen).
+   Every one is paid for on every turn. When recency stops being a good enough
+   ranking, the next step is SQLite's built-in FTS5, and only after that
+   embeddings.
 2. **Rolling summary** — everything in this conversation older than the tail.
 3. **Verbatim tail** — the last `RECENT_TURNS_IN_CONTEXT` messages.
 
@@ -56,7 +57,9 @@ async def build_context(
     """
     from src.agents.prompts.tutor_prompts import DEFAULT_PERSONA
 
-    memories = await memory_service.list_memories(session)
+    memories = await memory_service.list_for_context(
+        session, limit=settings.MAX_MEMORIES_IN_CONTEXT
+    )
 
     blocks = [
         build_system_prompt(

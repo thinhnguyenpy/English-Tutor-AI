@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.base_model import time_now
 from src.core.exceptions import MemoryNotFound
-from src.memories.models import ACTIVE, DISMISSED, MEMORY_KINDS, Memory
+from src.memories.models import ACTIVE, DISMISSED, KIND_PROFILE, MEMORY_KINDS, Memory
 
 
 async def list_memories(session: AsyncSession, *, status: str | None = ACTIVE) -> list[Memory]:
@@ -17,6 +17,33 @@ async def list_memories(session: AsyncSession, *, status: str | None = ACTIVE) -
         stmt = stmt.where(Memory.status == status)
     stmt = stmt.order_by(Memory.kind.asc(), Memory.last_seen_at.desc())
     return list((await session.execute(stmt)).scalars().all())
+
+
+async def list_for_context(session: AsyncSession, *, limit: int) -> list[Memory]:
+    """The facts the tutor carries into a turn, at most `limit`.
+
+    Profile facts (job, city, family) are kept first: they are few, stable and
+    rarely re-mentioned, so ranking them by recency would drop exactly the
+    things a tutor most needs to remember. The rest compete on `last_seen_at`.
+    Returned in `list_memories` order (kind, then most recent) for rendering.
+    """
+
+    def ranked_ids(kind_filter, n: int):
+        # Ranked in SQL: SQLite hands back naive datetimes while rows created
+        # in this session hold aware ones, so sorting in Python can raise.
+        return (
+            select(Memory.id)
+            .where(Memory.status == ACTIVE, kind_filter)
+            .order_by(Memory.last_seen_at.desc())
+            .limit(n)
+        )
+
+    profile_ids = list(await session.scalars(ranked_ids(Memory.kind == KIND_PROFILE, limit)))
+    other_ids = list(
+        await session.scalars(ranked_ids(Memory.kind != KIND_PROFILE, limit - len(profile_ids)))
+    )
+    chosen = set(profile_ids + other_ids)
+    return [m for m in await list_memories(session) if m.id in chosen]
 
 
 async def dismiss_memory(session: AsyncSession, memory_id: UUID) -> None:

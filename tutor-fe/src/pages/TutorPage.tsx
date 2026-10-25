@@ -98,7 +98,8 @@ export default function TutorPage() {
       setStreaming((prev) => prev + text);
       tts.speakStreaming(text);
     },
-    onReplyDone: () => {
+    onReplyDone: (_messageId, _userMessageId, turnCount) => {
+      if (activeId) patchLocal(activeId, { turn_count: turnCount });
       tts.flush();
       setStreaming("");
       setBusy(false);
@@ -110,9 +111,9 @@ export default function TutorPage() {
     onTitle: (title) => {
       if (activeId) patchLocal(activeId, { title });
     },
-    onTurnLimit: (_turnCount, maxTurns) => {
+    onTurnLimit: (turnCount) => {
       setBusy(false);
-      setError(`This conversation has reached its ${maxTurns}-turn limit. Start a new one.`);
+      if (activeId) patchLocal(activeId, { turn_count: turnCount });
       // Drop the optimistic bubble: the server refused and stored nothing.
       if (activeId) api.conversations.messages(activeId).then(setMessages).catch(() => {});
     },
@@ -182,8 +183,7 @@ export default function TutorPage() {
   // --- actions ---------------------------------------------------------------
 
   const startTopic = async (topic: Topic) => {
-    const conversation = await conversationsState.create(topic.slug);
-    await conversationsState.rename(conversation.id, topic.title);
+    await conversationsState.create({ topic_slug: topic.slug, title: topic.title });
   };
 
   const dismissMemory = async (id: string) => {
@@ -200,7 +200,14 @@ export default function TutorPage() {
     [memoryGroups],
   );
 
-  const micDisabled = !activeId || !speech.supported || health?.tutor_configured === false;
+  // The cap counts student turns; the server refuses past it (turn_limit).
+  const turnCount = active?.turn_count ?? 0;
+  const maxTurns = active?.max_turns ?? 0;
+  const turnsLeft = maxTurns - turnCount;
+  const limitReached = Boolean(active) && turnsLeft <= 0;
+
+  const micDisabled =
+    !activeId || !speech.supported || health?.tutor_configured === false || limitReached;
 
   // --- render ----------------------------------------------------------------
 
@@ -315,6 +322,22 @@ export default function TutorPage() {
             disabled={micDisabled}
             onToggle={speech.toggle}
           />
+          {limitReached ? (
+            <button
+              type="button"
+              onClick={() => conversationsState.create()}
+              className="rounded-full bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow transition hover:bg-brand-700"
+            >
+              That's {maxTurns} turns — start a new conversation
+            </button>
+          ) : (
+            active && (
+              <p className={`text-xs ${turnsLeft <= 3 ? "text-amber-600" : "text-slate-400"}`}>
+                Turn {turnCount} / {maxTurns}
+                {turnsLeft <= 3 && ` — ${turnsLeft} left`}
+              </p>
+            )
+          )}
           <p className="h-4 text-xs text-slate-400">
             {busy
               ? "Tutor is replying…"

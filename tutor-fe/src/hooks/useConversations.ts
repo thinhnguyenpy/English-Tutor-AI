@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { api } from "@/api/client";
-import type { Conversation, Persona } from "@/api/types";
+import type { Conversation, ConversationCreate, Persona } from "@/api/types";
 
 const LAST_OPEN_KEY = "tutor.lastConversationId";
 
@@ -40,10 +40,8 @@ export function useConversations() {
   }, [activeId]);
 
   const create = useCallback(
-    async (topicSlug?: string) => {
-      const conversation = await api.conversations.create(
-        topicSlug ? { topic_slug: topicSlug } : {},
-      );
+    async (body: ConversationCreate = {}) => {
+      const conversation = await api.conversations.create(body);
       // Creating may have archived the least-recently-active one, so re-read
       // rather than prepending locally.
       await refresh();

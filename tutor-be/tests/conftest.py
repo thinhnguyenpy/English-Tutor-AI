@@ -3,7 +3,17 @@
 Every test runs against a throwaway SQLite file, never the dev database. A
 file rather than `:memory:` because the async engine hands out more than one
 connection and an in-memory database is per-connection.
+
+The Azure block is blanked before `src` is imported. Process env beats the
+`.env` file in pydantic-settings, so a developer's real key in tutor-be/.env
+never reaches a test — no test can bill the deployment, and the no-key
+refusal contract stays testable on a configured machine.
 """
+
+import os
+
+for _var in ("AZURE_LLM_ENDPOINT", "AZURE_LLM_API_KEY", "AZURE_LLM_MODEL"):
+    os.environ[_var] = ""
 
 from collections.abc import AsyncGenerator
 from pathlib import Path

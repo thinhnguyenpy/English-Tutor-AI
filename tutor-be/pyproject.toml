@@ -50,6 +50,10 @@ extend-exclude = ["alembic/versions"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 
+[tool.ruff.lint.per-file-ignores]
+# Blanks the Azure env vars before `src` (and its settings singleton) is imported.
+"tests/conftest.py" = ["E402"]
+
 [tool.ruff.lint.isort]
 # Without this, isort files `src` under third-party and merges it into the
 # stdlib/vendor block.

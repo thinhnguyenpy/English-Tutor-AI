@@ -147,6 +147,13 @@ export type FeedbackStyle = "gentle" | "detailed" | "immediate" | "summary";
 
 // --- WebSocket frames --------------------------------------------------------
 
+/** Asks the tutor to speak first. Ignored once the conversation has messages. */
+export interface StartFrame {
+  type: "start";
+  difficulty?: Difficulty;
+  feedback_style?: FeedbackStyle;
+}
+
 export interface UserTurnFrame {
   type: "user_turn";
   text: string;
@@ -159,7 +166,8 @@ export type ServerFrame =
   | {
       type: "reply_done";
       message_id: string;
-      user_message_id: string;
+      /** Null for the tutor's opening, which answers no student turn. */
+      user_message_id: string | null;
       turn_count: number;
       max_turns: number;
     }

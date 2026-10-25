@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { liveSocketUrl } from "@/api/client";
-import type { ServerFrame, TurnFeedback, UserTurnFrame } from "@/api/types";
+import type { ServerFrame, StartFrame, TurnFeedback, UserTurnFrame } from "@/api/types";
 
 export type ConnectionState = "connecting" | "open" | "closed";
 
 export interface TutorSocketHandlers {
   onReplyDelta: (text: string) => void;
-  onReplyDone: (messageId: string, userMessageId: string) => void;
+  onReplyDone: (messageId: string, userMessageId: string | null) => void;
   onFeedback: (messageId: string, items: TurnFeedback[]) => void;
   onTitle: (title: string) => void;
   onError: (detail: string) => void;
@@ -78,12 +78,22 @@ export function useTutorSocket(
     };
   }, [conversationId]);
 
-  const sendTurn = useCallback((frame: Omit<UserTurnFrame, "type">) => {
+  const send = useCallback((frame: UserTurnFrame | StartFrame) => {
     const socket = socketRef.current;
     if (!socket || socket.readyState !== WebSocket.OPEN) return false;
-    socket.send(JSON.stringify({ type: "user_turn", ...frame }));
+    socket.send(JSON.stringify(frame));
     return true;
   }, []);
 
-  return { state, sendTurn };
+  const sendTurn = useCallback(
+    (frame: Omit<UserTurnFrame, "type">) => send({ type: "user_turn", ...frame }),
+    [send],
+  );
+
+  const sendStart = useCallback(
+    (frame: Omit<StartFrame, "type"> = {}) => send({ type: "start", ...frame }),
+    [send],
+  );
+
+  return { state, sendTurn, sendStart };
 }

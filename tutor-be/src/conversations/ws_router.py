@@ -2,10 +2,12 @@
 
 Protocol (JSON frames):
 
+    client → {"type": "start", "difficulty": "...", "feedback_style": "..."}
+              tutor opens a conversation that has no messages yet
     client → {"type": "user_turn", "text": "...",
               "difficulty": "...", "feedback_style": "..."}
     server → {"type": "reply_delta", "text": "..."}      streamed
-    server → {"type": "reply_done", "message_id": "...", "user_message_id": "...",
+    server → {"type": "reply_done", "message_id": "...", "user_message_id": "..." | null,
               "turn_count": n, "max_turns": 30}
     server → {"type": "turn_limit", "turn_count": n, "max_turns": 30}   refused
     server → {"type": "feedback", "message_id": "...", "items": [...]}   cold
@@ -29,7 +31,7 @@ from pydantic_ai.messages import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.agents.prompts.tutor_prompts import WRAP_UP_RULE
+from src.agents.prompts.tutor_prompts import OPENING_PROMPT, OPENING_RULE, WRAP_UP_RULE
 from src.agents.tutor_agent import TutorDeps, build_tutor_agent
 from src.conversations import service
 from src.conversations.cold import SocketSender, schedule_cold_pass, schedule_final_pass
@@ -87,14 +89,13 @@ async def live(websocket: WebSocket, conversation_id: UUID) -> None:
         while True:
             frame = await websocket.receive_json()
 
-            if frame.get("type") != "user_turn":
-                await sender.send(
-                    {"type": "error", "detail": f"Unknown frame type {frame.get('type')!r}"}
-                )
+            kind = frame.get("type")
+            if kind not in ("user_turn", "start"):
+                await sender.send({"type": "error", "detail": f"Unknown frame type {kind!r}"})
                 continue
 
             text = (frame.get("text") or "").strip()
-            if error := turn_error(text):
+            if kind == "user_turn" and (error := turn_error(text)):
                 await sender.send({"type": "error", "detail": error})
                 continue
 
@@ -109,7 +110,10 @@ async def live(websocket: WebSocket, conversation_id: UUID) -> None:
 
             try:
                 async with SessionLocal() as session:
-                    await _handle_turn(sender, session, conversation_id, text, frame)
+                    if kind == "start":
+                        await _handle_opening(sender, session, conversation_id, frame)
+                    else:
+                        await _handle_turn(sender, session, conversation_id, text, frame)
             except Exception as exc:  # noqa: BLE001 — one bad turn must not close the socket
                 logger.opt(exception=True).error("Turn failed: {}", exc)
                 await sender.send({"type": "error", "detail": str(exc)})
@@ -154,7 +158,7 @@ async def _stream_reply(
     prompt: str,
     system_prompt: str,
     history: list[ModelMessage],
-    user_message_id: UUID,
+    user_message_id: UUID | None,
 ) -> None:
     """Stream the tutor's reply, store it, and close the turn with reply_done."""
     agent = build_tutor_agent()
@@ -174,10 +178,31 @@ async def _stream_reply(
         {
             "type": "reply_done",
             "message_id": str(assistant_message.id),
-            "user_message_id": str(user_message_id),
+            "user_message_id": str(user_message_id) if user_message_id else None,
             "turn_count": conversation.turn_count,
             "max_turns": settings.MAX_TURNS_PER_CONVERSATION,
         }
+    )
+
+
+async def _handle_opening(
+    sender: SocketSender, session: AsyncSession, conversation_id: UUID, frame: dict
+) -> None:
+    """The tutor speaks first in a new conversation. Idempotent: a reconnect,
+    or a `start` sent after the student already spoke, does nothing."""
+    conversation = await service.get_conversation(session, conversation_id)
+    if await service.list_messages(session, conversation_id, limit=1):
+        return
+
+    system_prompt = await _system_prompt(session, conversation, frame)
+    await _stream_reply(
+        sender,
+        session,
+        conversation,
+        prompt=OPENING_PROMPT,
+        system_prompt=f"{system_prompt}\n\n{OPENING_RULE}",
+        history=[],
+        user_message_id=None,
     )
 
 

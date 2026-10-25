@@ -13,7 +13,7 @@ from pydantic_ai import Agent
 from pydantic_ai.messages import ModelMessage, ModelRequest
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
-from src.agents.prompts.tutor_prompts import PERSONA_PROMPTS, WRAP_UP_RULE
+from src.agents.prompts.tutor_prompts import OPENING_RULE, PERSONA_PROMPTS, WRAP_UP_RULE
 from src.agents.tutor_agent import TutorDeps
 from src.conversations import service, ws_router
 from src.conversations.models import Message
@@ -131,3 +131,31 @@ async def test_last_turn_wraps_up_and_the_next_is_refused(session, prompts, monk
     assert third.frames == [{"type": "turn_limit", "turn_count": 2, "max_turns": 2}]
     assert len(prompts) == 2, "the refused turn must not reach the model"
     assert len(await service.list_messages(session, conv.id)) == 4, "nor be stored"
+
+
+async def test_tutor_opens_a_new_conversation_once(session, prompts):
+    session.add(Topic(slug="travel", title="Travel", prompt_seed="Ask about a recent trip."))
+    await session.commit()
+    conv = await service.create_conversation(session, ConversationCreate(topic_slug="travel"))
+
+    opened = FakeSender()
+    await ws_router._handle_opening(opened, session, conv.id, {})
+    again = FakeSender()
+    await ws_router._handle_opening(again, session, conv.id, {})
+
+    assert OPENING_RULE.strip() in prompts[0] and "Ask about a recent trip." in prompts[0]
+    assert opened.frames[-1]["user_message_id"] is None
+    assert opened.frames[-1]["turn_count"] == 0, "the opening is not a student turn"
+    assert again.frames == [] and len(prompts) == 1, "reconnect must not greet twice"
+    messages = await service.list_messages(session, conv.id)
+    assert [m.role for m in messages] == ["assistant"]
+
+
+async def test_student_can_reply_to_the_opening(session, prompts):
+    conv = await service.create_conversation(session, ConversationCreate())
+    await ws_router._handle_opening(FakeSender(), session, conv.id, {})
+
+    sender = await _turn(session, conv, text="I'm fine, thanks")
+
+    assert sender.frames[-1]["type"] == "reply_done"
+    assert OPENING_RULE.strip() not in prompts[1]

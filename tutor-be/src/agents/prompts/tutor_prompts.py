@@ -100,6 +100,18 @@ three sentences: react to what they just said, name one thing they did well
 today, and say goodbye. Do not ask a question.
 """
 
+OPENING_RULE = """\
+The student has just opened this conversation and has not said anything yet.
+Speak first: greet them in one short sentence and ask exactly one easy
+question to get them talking. If there is a topic for today, open with it. If
+you have notes about the student, bring up one of them naturally — for
+example, ask how an upcoming exam or event went.
+"""
+
+# The user-role message that triggers the opening. Never stored: the opening
+# reply is saved on its own, so history shows the tutor speaking first.
+OPENING_PROMPT = "(The student opened the conversation.)"
+
 
 def build_system_prompt(
     persona: str = DEFAULT_PERSONA,

@@ -53,6 +53,9 @@ export default function TutorPage() {
     () => ({ difficulty: learner.difficulty, feedback_style: learner.feedbackStyle }),
     [learner.difficulty, learner.feedbackStyle],
   );
+  const active = conversations.find((c) => c.id === activeId);
+  // Messages fetched for this id, so "no messages" is known rather than "not loaded yet".
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
 
   // --- data loading ----------------------------------------------------------
 
@@ -78,7 +81,13 @@ export default function TutorPage() {
     setBusy(false);
     setStreaming("");
     setError(null);
-    api.conversations.messages(activeId).then(setMessages).catch(() => setMessages([]));
+    api.conversations
+      .messages(activeId)
+      .then((rows) => {
+        setMessages(rows);
+        setLoadedFor(activeId);
+      })
+      .catch(() => setMessages([]));
     api.conversations.feedback(activeId).then(setNotes).catch(() => setNotes([]));
   }, [activeId]);
 
@@ -156,6 +165,19 @@ export default function TutorPage() {
   );
 
   const speech = useSpeechRecognition({ onResult: handleTranscript });
+
+  // --- tutor speaks first ----------------------------------------------------
+
+  const isEmpty = loadedFor === activeId && messages.length === 0 && !streaming;
+  const askTutorToStart = () => socket.sendStart(levelFrame);
+
+  // A topic conversation opens on its own. A blank one waits, so its empty
+  // state (topic picker, "let the tutor start") stays usable. The server
+  // ignores `start` once messages exist, so a reconnect cannot greet twice.
+  useEffect(() => {
+    if (isEmpty && active?.topic_slug && socket.state === "open") askTutorToStart();
+    // Not keyed on askTutorToStart: a level change must not re-trigger it.
+  }, [isEmpty, active?.topic_slug, socket.state]);
 
   // --- actions ---------------------------------------------------------------
 
@@ -271,6 +293,16 @@ export default function TutorPage() {
                   Anything at all — your day, your work, what's on your mind.
                 </p>
               </div>
+              {activeId && (
+                <button
+                  type="button"
+                  onClick={askTutorToStart}
+                  disabled={socket.state !== "open"}
+                  className="rounded-full bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow transition hover:bg-brand-700 disabled:bg-slate-300"
+                >
+                  Let the tutor start
+                </button>
+              )}
               <TopicPicker topics={topics} onPick={startTopic} />
             </div>
           }

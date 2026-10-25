@@ -29,6 +29,15 @@ class Settings(BaseSettings):
     AZURE_LLM_ANALYSIS_MODEL: str = ""
     AZURE_LLM_API_VERSION: str = ""
     AZURE_LLM_TRUST_ENV: bool = False
+    # Reasoning effort per path. Reasoning models (gpt-5 family) default to
+    # "medium", which on gpt-5-mini cost 5-7s before the first token and spent
+    # ~90% of output tokens on hidden reasoning. The hot path wants none of it;
+    # feedback and memory extraction gain precision from a little; titles and
+    # summaries do not. Empty means "do not send the parameter" — required for
+    # non-reasoning deployments, which reject it.
+    AZURE_LLM_REASONING_EFFORT: str = "minimal"
+    AZURE_LLM_ANALYSIS_REASONING_EFFORT: str = "low"
+    AZURE_LLM_LIGHT_REASONING_EFFORT: str = "minimal"
     AGENT_TIMEOUT_S: int = 60
 
     # --- Tutoring behaviour --------------------------------------------------

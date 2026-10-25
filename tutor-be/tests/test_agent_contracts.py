@@ -93,3 +93,21 @@ async def test_tutor_agent_streams_text():
             chunks.append(delta)
 
     assert "".join(chunks) == "Hello there. How was your day?"
+
+
+def test_reasoning_effort_is_sent_only_when_configured():
+    """Empty means "leave the parameter off" — a non-reasoning deployment
+    rejects `reasoning_effort` outright, so it must be omittable."""
+    from src.agents.base import reasoning_settings
+
+    assert reasoning_settings("") is None
+    assert reasoning_settings("minimal") == {"openai_reasoning_effort": "minimal"}
+
+
+def test_titles_and_summaries_run_at_the_light_effort(monkeypatch):
+    from src.agents import title_agent
+
+    monkeypatch.setattr(title_agent, "analysis_model", lambda: TestModel())
+    monkeypatch.setattr(settings, "AZURE_LLM_LIGHT_REASONING_EFFORT", "none")
+    for build in (title_agent.build_title_agent, title_agent.build_summary_agent):
+        assert build().model_settings == {"openai_reasoning_effort": "none"}

@@ -17,7 +17,7 @@ from functools import cache
 
 import httpx
 from openai import AsyncAzureOpenAI
-from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.models.openai import OpenAIChatModel, OpenAIChatModelSettings
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from src.core.config import settings
@@ -39,12 +39,20 @@ def _client() -> AsyncAzureOpenAI:
     )
 
 
+def reasoning_settings(effort: str) -> OpenAIChatModelSettings | None:
+    """Model settings for one reasoning effort, or None to leave it unset."""
+    if not effort:
+        return None
+    return OpenAIChatModelSettings(openai_reasoning_effort=effort)
+
+
 @cache
 def chat_model() -> OpenAIChatModel:
     """Hot path — conversational replies."""
     return OpenAIChatModel(
         settings.AZURE_LLM_MODEL,
         provider=OpenAIProvider(openai_client=_client()),
+        settings=reasoning_settings(settings.AZURE_LLM_REASONING_EFFORT),
     )
 
 
@@ -55,4 +63,5 @@ def analysis_model() -> OpenAIChatModel:
     return OpenAIChatModel(
         settings.AZURE_LLM_ANALYSIS_MODEL or settings.AZURE_LLM_MODEL,
         provider=OpenAIProvider(openai_client=_client()),
+        settings=reasoning_settings(settings.AZURE_LLM_ANALYSIS_REASONING_EFFORT),
     )

@@ -142,8 +142,25 @@ export const PERSONA_LABELS: Record<Persona, string> = {
   fluency_coach: "Fluency coach",
 };
 
+/** Mirrors DIFFICULTY_PROMPTS in tutor-be/src/agents/prompts/tutor_prompts.py. */
 export type Difficulty = "beginner" | "intermediate" | "advanced" | "native";
+
+export const DIFFICULTY_LABELS: Record<Difficulty, string> = {
+  beginner: "Beginner",
+  intermediate: "Intermediate",
+  advanced: "Advanced",
+  native: "Native-like",
+};
+
+/** Mirrors FEEDBACK_STYLE_PROMPTS in tutor-be/src/agents/prompts/tutor_prompts.py. */
 export type FeedbackStyle = "gentle" | "detailed" | "immediate" | "summary";
+
+export const FEEDBACK_STYLE_LABELS: Record<FeedbackStyle, string> = {
+  gentle: "Gentle feedback",
+  detailed: "Detailed feedback",
+  immediate: "Correct me immediately",
+  summary: "Flow first",
+};
 
 // --- WebSocket frames --------------------------------------------------------
 

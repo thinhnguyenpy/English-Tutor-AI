@@ -3,6 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { api } from "@/api/client";
 import type {
+  Difficulty,
+  FeedbackStyle,
   Health,
   Memory,
   MemoryGroup,
@@ -11,7 +13,7 @@ import type {
   Topic,
   TurnFeedback,
 } from "@/api/types";
-import { PERSONA_LABELS } from "@/api/types";
+import { DIFFICULTY_LABELS, FEEDBACK_STYLE_LABELS, PERSONA_LABELS } from "@/api/types";
 import ChatPanel from "@/components/ChatPanel";
 import ConversationSidebar from "@/components/ConversationSidebar";
 import FeedbackPanel from "@/components/FeedbackPanel";
@@ -19,6 +21,7 @@ import MemoryPanel from "@/components/MemoryPanel";
 import MicButton from "@/components/MicButton";
 import TopicPicker from "@/components/TopicPicker";
 import { useConversations } from "@/hooks/useConversations";
+import { useLearnerSettings } from "@/hooks/useLearnerSettings";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { useSpeechSynthesis } from "@/hooks/useSpeechSynthesis";
 import { useTutorSocket } from "@/hooks/useTutorSocket";
@@ -45,6 +48,11 @@ export default function TutorPage() {
     conversations.find((c) => c.id === activeId)?.persona ?? "conversation_partner";
 
   const tts = useSpeechSynthesis();
+  const learner = useLearnerSettings();
+  const levelFrame = useMemo(
+    () => ({ difficulty: learner.difficulty, feedback_style: learner.feedbackStyle }),
+    [learner.difficulty, learner.feedbackStyle],
+  );
 
   // --- data loading ----------------------------------------------------------
 
@@ -128,7 +136,7 @@ export default function TutorPage() {
       if (!activeId) return;
       tts.cancel();
       setError(null);
-      const sent = socket.sendTurn({ text: transcript });
+      const sent = socket.sendTurn({ text: transcript, ...levelFrame });
       if (!sent) {
         setError("Not connected to the tutor. Check the backend is running.");
         return;
@@ -144,7 +152,7 @@ export default function TutorPage() {
         },
       ]);
     },
-    [activeId, socket, tts],
+    [activeId, socket, tts, levelFrame],
   );
 
   const speech = useSpeechRecognition({ onResult: handleTranscript });
@@ -195,20 +203,46 @@ export default function TutorPage() {
         />
 
         <header className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3">
-          <select
-            value={persona}
-            disabled={!activeId}
-            onChange={(e) => {
-              if (activeId) conversationsState.setPersona(activeId, e.target.value as Persona);
-            }}
-            className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-700 outline-none focus:border-brand-400"
-          >
-            {Object.entries(PERSONA_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
+          <div className="flex items-center gap-2">
+            <select
+              value={persona}
+              disabled={!activeId}
+              onChange={(e) => {
+                if (activeId) conversationsState.setPersona(activeId, e.target.value as Persona);
+              }}
+              className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-700 outline-none focus:border-brand-400"
+            >
+              {Object.entries(PERSONA_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <select
+              value={learner.difficulty}
+              onChange={(e) => learner.setDifficulty(e.target.value as Difficulty)}
+              title="Your level — applies to every conversation"
+              className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-700 outline-none focus:border-brand-400"
+            >
+              {Object.entries(DIFFICULTY_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <select
+              value={learner.feedbackStyle}
+              onChange={(e) => learner.setFeedbackStyle(e.target.value as FeedbackStyle)}
+              title="How the tutor corrects you — applies to every conversation"
+              className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-700 outline-none focus:border-brand-400"
+            >
+              {Object.entries(FEEDBACK_STYLE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
 
           <button
             type="button"

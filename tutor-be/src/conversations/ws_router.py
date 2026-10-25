@@ -131,6 +131,56 @@ async def _topic_seed(session: AsyncSession, conversation: Conversation) -> str 
     return topic.prompt_seed
 
 
+async def _system_prompt(session: AsyncSession, conversation: Conversation, frame: dict) -> str:
+    from src.memories.context import build_context
+
+    # Persona belongs to the conversation; level and feedback style are the
+    # student's own settings and ride along on every frame.
+    return await build_context(
+        session,
+        conversation,
+        persona=conversation.persona,
+        difficulty=frame.get("difficulty", "intermediate"),
+        feedback_style=frame.get("feedback_style", "gentle"),
+        topic_seed=await _topic_seed(session, conversation),
+    )
+
+
+async def _stream_reply(
+    sender: SocketSender,
+    session: AsyncSession,
+    conversation: Conversation,
+    *,
+    prompt: str,
+    system_prompt: str,
+    history: list[ModelMessage],
+    user_message_id: UUID,
+) -> None:
+    """Stream the tutor's reply, store it, and close the turn with reply_done."""
+    agent = build_tutor_agent()
+    chunks: list[str] = []
+    async with agent.run_stream(
+        prompt, deps=TutorDeps(system_prompt=system_prompt), message_history=history
+    ) as result:
+        async for delta in result.stream_text(delta=True):
+            chunks.append(delta)
+            await sender.send({"type": "reply_delta", "text": delta})
+
+    reply = "".join(chunks).strip()
+    assistant_message = await service.append_message(
+        session, conversation.id, role=ROLE_ASSISTANT, text=reply
+    )
+    await sender.send(
+        {
+            "type": "reply_done",
+            "message_id": str(assistant_message.id),
+            "user_message_id": str(user_message_id),
+            "turn_count": conversation.turn_count,
+            "max_turns": settings.MAX_TURNS_PER_CONVERSATION,
+        }
+    )
+
+
 async def _handle_turn(
     sender: SocketSender,
     session: AsyncSession,
@@ -138,8 +188,6 @@ async def _handle_turn(
     text: str,
     frame: dict,
 ) -> None:
-    from src.memories.context import build_context
-
     conversation = await service.get_conversation(session, conversation_id)
     max_turns = settings.MAX_TURNS_PER_CONVERSATION
     if conversation.turn_count >= max_turns:
@@ -163,43 +211,19 @@ async def _handle_turn(
     tail = trim_to_budget(
         [m for m in tail if m.id != user_message.id], settings.HISTORY_CHAR_BUDGET
     )
-    history = to_message_history(tail)
 
-    # Persona belongs to the conversation; level and feedback style are the
-    # student's own settings and ride along on every frame.
-    system_prompt = await build_context(
-        session,
-        conversation,
-        persona=conversation.persona,
-        difficulty=frame.get("difficulty", "intermediate"),
-        feedback_style=frame.get("feedback_style", "gentle"),
-        topic_seed=await _topic_seed(session, conversation),
-    )
+    system_prompt = await _system_prompt(session, conversation, frame)
     if conversation.turn_count == max_turns:
         system_prompt = f"{system_prompt}\n\n{WRAP_UP_RULE}"
 
-    agent = build_tutor_agent()
-    chunks: list[str] = []
-    async with agent.run_stream(
-        text, deps=TutorDeps(system_prompt=system_prompt), message_history=history
-    ) as result:
-        async for delta in result.stream_text(delta=True):
-            chunks.append(delta)
-            await sender.send({"type": "reply_delta", "text": delta})
-
-    reply = "".join(chunks).strip()
-    assistant_message = await service.append_message(
-        session, conversation_id, role=ROLE_ASSISTANT, text=reply
-    )
-
-    await sender.send(
-        {
-            "type": "reply_done",
-            "message_id": str(assistant_message.id),
-            "user_message_id": str(user_message.id),
-            "turn_count": conversation.turn_count,
-            "max_turns": max_turns,
-        }
+    await _stream_reply(
+        sender,
+        session,
+        conversation,
+        prompt=text,
+        system_prompt=system_prompt,
+        history=to_message_history(tail),
+        user_message_id=user_message.id,
     )
 
     # Everything past this point is detached: the student already has their
